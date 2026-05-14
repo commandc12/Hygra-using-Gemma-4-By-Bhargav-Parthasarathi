@@ -1,0 +1,6 @@
+{
+  "name": "HYGRA: The One-Shot Sovereign Engine",
+  "description": "Sovereign Robotics Architect for generating 10-stage technical stacks, URDF twins, and ROS 2 logic for futuristic robotic concepts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
