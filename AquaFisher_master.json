@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "robot_name": "AquaFisher",
+    "robot_type": "aquatic",
+    "summary": "An underwater fishing robot equipped with two manipulator arms and a net for autonomous fishing operations.",
+    "environment": "Salt water, varying depths, potential for strong currents"
+  },
+  "kinematics": {
+    "dof": 10,
+    "joint_topology": [
+      {
+        "id": "arm1_joint1",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "arm1_joint2",
+        "type": "revolute",
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "arm2_joint1",
+        "type": "revolute",
+        "axis": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "arm2_joint2",
+        "type": "revolute",
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "net_mount_joint",
+        "type": "revolute",
+        "axis": [
+          0,
+          1,
+          0
+        ]
+      }
+    ]
+  },
+  "physics_math_proof": "### Torque Calculations for Arm Joints:\n\nLet's assume each arm needs to lift a maximum weight of 2 kg (including the weight of the net and any caught fish). We'll use a safety factor of 2.\n\n*   **Force (F):** F = mass * gravity = 2 kg * 9.81 m/s^2 = 19.62 N\n*   **Distance (r):** Assume the arm's effective length (distance from joint to the load) is 0.25 meters.\n*   **Torque (τ):** τ = F * r = 19.62 N * 0.25 m = 4.905 Nm\n*   **Safety Factor (FS):** τ_required = τ * FS = 4.905 Nm * 2 = 9.81 Nm\n\nTherefore, each joint motor must provide at least 9.81 Nm of torque.  We choose a high-torque motor to meet this requirement.\n\n### Fluid Resistance Calculation:\n\nAssuming the robot moves at a maximum speed of 1 m/s. We can estimate the drag force using the following formula:\n\n*   **Drag Force (Fd):** Fd = 0.5 * Cd * ρ * A * v^2\n    *   Cd = Drag coefficient (assume 0.8 for streamlined body)\n    *   ρ = Density of seawater (approx. 1025 kg/m^3)\n    *   A = Frontal area (assume 0.2 m^2)\n    *   v = Velocity (1 m/s)\n\nFd = 0.5 * 0.8 * 1025 kg/m^3 * 0.2 m^2 * (1 m/s)^2 = 82 N\n\nThis drag force will impact the required thrust and power for locomotion. The thrusters must overcome this drag to maintain speed and maneuverability.\n\n### Thermal Dissipation:\n\nMotors operating underwater require effective cooling to prevent overheating. We'll rely on the surrounding water as a heat sink. The heat dissipation calculation is complex and depends on the motor's efficiency and the water's flow rate around the motor housing.  Passive cooling through conduction to the robot's frame and then convection to the water is assumed.",
+  "hardware": {
+    "components": [
+      "High-Torque Brushless DC Motors (NEMA 17 with 5:1 planetary gearbox) for arm joints",
+      "Waterproof Enclosures for Motors and Electronics",
+      "HD Underwater Camera (with lighting)",
+      "Depth Sensor",
+      "IMU",
+      "2 x Blue Robotics T200 Thrusters",
+      "Custom Net Deployment Mechanism (servo-actuated)",
+      "Gemma 4 E4B SOM",
+      "Titanium Frame",
+      "Battery Management System",
+      "High-Capacity Lithium-ion Battery",
+      "Hydrostatic pressure sensor"
+    ],
+    "benchmarks_2026": "Actuator Efficiency: >80%, Sensor Accuracy: Depth +/- 0.1m, IMU: <1 deg/hr drift, Pressure hull: withstand 100m depth with a safety factor of 2. Power system: >85% efficiency"
+  },
+  "digital_twin": {
+    "urdf_xml": "<?xml version=\"1.0\" ?>\n<robot name=\"aquafisher\">\n  <link name=\"base_link\">\n    <visual>\n      <geometry>\n        <box size=\"0.5 0.3 0.2\"/>\n      </geometry>\n      <material name=\"blue\">\n        <color rgba=\"0 0 0.8 1\"/>\n      </material>\n    </visual>\n  </link>\n\n  <joint name=\"arm1_joint1\" type=\"revolute\">\n    <parent link=\"base_link\"/>\n    <child link=\"arm1_link1\"/>\n    <origin xyz=\"0.2 0.1 0.1\" rpy=\"0 0 0\"/>\n    <axis xyz=\"0 0 1\"/>\n    <limit lower=\"-3.14\" upper=\"3.14\" effort=\"1000\" velocity=\"1\"/>\n  </joint>\n\n  <link name=\"arm1_link1\">\n    <visual>\n      <geometry>\n        <box size=\"0.1 0.1 0.3\"/>\n      </geometry>\n      <material name=\"gray\">\n        <color rgba=\"0.5 0.5 0.5 1\"/>\n      </material>\n    </visual>\n  </link>\n\n\n  <joint name=\"net_mount_joint\" type=\"revolute\">\n    <parent link=\"base_link\"/>\n    <child link=\"net_link\"/>\n    <origin xyz=\"0 0 0\" rpy=\"0 0 0\"/>\n    <axis xyz=\"0 1 0\"/>\n  </joint>\n\n  <link name=\"net_link\">\n    <visual>\n      <geometry>\n        <sphere radius=\"0.15\"/>\n      </geometry>\n      <material name=\"net_color\">\n        <color rgba=\"0 0 0 1\"/>\n      </material>\n    </visual>\n  </link>\n\n</robot>"
+  },
+  "control_logic": {
+    "python_kernel": "# Python Code Block (Control Logic)\nimport rclpy\nfrom rclpy.node import Node\nfrom std_msgs.msg import Float64\n\nclass AquaFisherController(Node):\n    def __init__(self):\n        super().__init__('aquafisher_controller')\n        self.arm1_joint1_pub = self.create_publisher(Float64, '/arm1_joint1_position_controller/command', 10)\n        self.arm1_joint2_pub = self.create_publisher(Float64, '/arm1_joint2_position_controller/command', 10)\n\n        self.timer = self.create_timer(0.1, self.control_loop)\n\n    def control_loop(self):\n        # Example: Move arm1_joint1 to 1.0 radians\n        msg1 = Float64()\n        msg1.data = 1.0\n        self.arm1_joint1_pub.publish(msg1)\n\n        # Example: Move arm1_joint2 to -0.5 radians\n        msg2 = Float64()\n        msg2.data = -0.5\n        self.arm1_joint2_pub.publish(msg2)\n\n\ndef main(args=None):\n    rclpy.init(args=args)\n    aquafisher_controller = AquaFisherController()\n    rclpy.spin(aquafisher_controller)\n    aquafisher_controller.destroy_node()\n    rclpy.shutdown()\n\nif __name__ == '__main__':\n    main()"
+  },
+  "navigation": {
+    "nav2_behavior_tree_xml": "<!-- Basic Nav2 Behavior Tree -->\n<root main_tree_to_execute = \"MainTree\">\n  <BehaviorTree ID=\"MainTree\">\n    <Sequence name=\"RootSequence\">\n      <Fallback name=\"NavigationTask\">\n        <Sequence name=\"NavigateToPoseSequence\">\n          <ComputePathToPose name=\"ComputePath\" topic=\"/plan\"/>\n          <FollowPath name=\"FollowPlan\" controller_id=\"FollowPath\"/>\n        </Sequence>\n      </Fallback>\n    </Sequence>\n  </BehaviorTree>\n</root>"
+  },
+  "cognitive_model": {
+    "vla_selection": "Gemma 4 E4B",
+    "intent_processing_logic": "# Gemma 4 E4B Intent Processing\n\ndef process_intent(natural_language_query):\n    \"\"\"Processes natural language intent using Gemma 4 native think tags.\"\"\"\n    # Example NL query: \"Analyze the seabed for optimal fishing spots near the coral reef\"\n    intent = f\"<|think|> Classify the user intent: [search seabed, identify fishing spots, reef proximity], extract keywords: [seabed, fishing, reef] <|file_safe_search|>\"\n\n    if \"search seabed\" in intent and \"fishing spots\" in intent and \"reef\" in intent:\n        # Trigger seabed scanning behavior\n        print(\"Triggering seabed scanning behavior near coral reef...\")\n        trigger_ros2_service(\"start_seabed_scan\", \"coral_reef\")  # Placeholder\n    elif \"safe passage\" in intent:\n        print(\"trigger obstacle avoidance\")\n    else:\n        print(\"Unknown intent.\")\n\n    return intent\n\n\n# Placeholder function to trigger ROS 2 services (replace with actual ROS 2 service call)\ndef trigger_ros2_service(service_name, location):\n    print(f\"Calling ROS 2 service: {service_name} with location: {location}\")\n\n# Example Usage\nnl_query = \"Analyze the seabed for optimal fishing spots near the coral reef\"\nprocessed_intent = process_intent(nl_query)\nprint(f\"Processed Intent: {processed_intent}\")\n\n# Example Usage\nnl_query2 = \"Analyze terrain for safe passage\"\nprocessed_intent = process_intent(nl_query2)\nprint(f\"Processed Intent: {processed_intent}\")"
+  },
+  "fleet_config": {
+    "zenoh_vda5050_json": "{\n  \"vda5050_version\": \"3.0\",\n  \"manufacturer\": \"Acme Robotics\",\n  \"model\": \"AquaFisher\",\n  \"serial_number\": \"AF-001\",\n  \"capabilities\": [\n    \"navigation\",\n    \"manipulation\",\n    \"fishing\"\n  ],\n  \"zenoh_config\": {\n    \"peer\": [\"tcp/192.168.1.100:7447\"],\n    \"key_expression\": \"/aquafisher/status\"\n  }\n}"
+  },
+  "simulation_data": {
+    "isaac_sim_telemetry": "{\"environment\": \"underwater\", \"visibility\": \"low\", \"current_speed\": \"0.5 m/s\", \"fish_density\": \"high\"}",
+    "sys_id_block": "# Python Code Block (System Identification)\nimport numpy as np\n\nclass SysId:\n    def __init__(self):\n        self.friction_wet_sand = 0.6 # Example friction coefficient for wet sand\n        self.friction_sea_bed = 0.75\n        self.actuator_lag = 0.020 # 20ms servo latency (seconds)\n        self.lidar_noise_std = 0.01 # 1cm standard deviation (meters)\n        self.imu_gyro_noise_std = np.radians(0.1) # 0.1 degree/second (rad/s)\n\n    def get_friction(self, surface_type):\n        if surface_type == \"wet_sand\":\n            return self.friction_wet_sand\n        elif surface_type == \"sea_bed\":\n            return self.friction_sea_bed\n        else:\n            return 0.5 # Default value\n\n    def apply_actuator_lag(self, command, dt):\n        # Simple first-order lag model\n        alpha = dt / (self.actuator_lag + dt)\n        filtered_command = alpha * command + (1 - alpha) * self.last_command if hasattr(self, 'last_command') else command\n        self.last_command = filtered_command\n        return filtered_command\n\n    def add_lidar_noise(self, distance):\n        noise = np.random.normal(0, self.lidar_noise_std)\n        return distance + noise\n\n    def add_imu_noise(self, gyro_rate):\n        noise = np.random.normal(0, self.imu_gyro_noise_std)\n        return gyro_rate + noise\n\nsys_id = SysId()\n\n# Example Usage\nfriction = sys_id.get_friction(\"sea_bed\")\nprint(f\"Friction coefficient: {friction}\")\n\n# Simulate actuator lag\ncommand = 1.0 # Example command value\ndt = 0.01 # Time step of 10ms\nlagged_command = sys_id.apply_actuator_lag(command, dt)\nprint(f\"Lagged command: {lagged_command}\")\n\n# Simulate sensor noise\ndistance = 10.0 # Example Lidar distance\nnoisy_distance = sys_id.add_lidar_noise(distance)\nprint(f\"Noisy distance: {noisy_distance}\")\n\ngyro_rate = np.radians(5.0) # Example gyro rate\nnoisy_gyro_rate = sys_id.add_imu_noise(gyro_rate)\nprint(f\"Noisy gyro rate: {noisy_gyro_rate}\")"
+  },
+  "safety_audit": {
+    "iso_compliance": "ISO 13485 (modified for robotics) relevant sections for risk management and functional safety.  IEC 61508 for safety-related systems.",
+    "emergency_stop_logic": "# Emergency Stop Logic (Python)\nimport RPi.GPIO as GPIO #Example: using Raspberry Pi GPIO\nimport time\n\nESTOP_PIN = 17 # Define the GPIO pin connected to the E-stop button\n\nGPIO.setmode(GPIO.BCM)\nGPIO.setup(ESTOP_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)\n\ndef check_estop():\n    if GPIO.input(ESTOP_PIN) == GPIO.LOW:\n        print(\"Emergency Stop Activated!\")\n        # Implement motor shutdown and other safety procedures here\n        # Example: Stop all motor control commands\n        return True\n    return False\n\n# Continuously check for E-stop activation\n#Example:\n#while True:\n#    if check_estop():\n#        # Handle E-stop state (e.g., break the loop)\n#        break\n#    time.sleep(0.1)",
+    "heartbeat_monitor_logic": "# ROS 2 Heartbeat Monitor (Python)\nimport rclpy\nfrom rclpy.node import Node\nfrom std_msgs.msg import Bool\n\nclass HeartbeatMonitor(Node):\n    def __init__(self):\n        super().__init__('heartbeat_monitor')\n        self.subscription = self.create_subscription(\n            Bool,\n            '/heartbeat',\n            self.heartbeat_callback,\n            10)\n        self.subscription  # prevent unused variable warning\n        self.last_heartbeat_time = self.get_clock().now()\n        self.declare_parameter('timeout_sec', 5.0)\n        self.timeout_sec = self.get_parameter('timeout_sec').value\n\n        self.timer = self.create_timer(1.0, self.check_heartbeat)\n\n    def heartbeat_callback(self, msg):\n        self.last_heartbeat_time = self.get_clock().now()\n\n    def check_heartbeat(self):\n        time_since_last_heartbeat = (self.get_clock().now() - self.last_heartbeat_time).to_sec()\n        if time_since_last_heartbeat > self.timeout_sec:\n            self.get_logger().warn('Heartbeat timeout! Initiating safe state...')\n            #Implement Safe State triggering logic here (e.g., disable motors)\n            # Example:  publish to a topic that triggers a safety shutdown.\n            # safe_state_pub = self.create_publisher(Bool, '/safe_state', 10)\n            # safe_state_msg = Bool()\n            # safe_state_msg.data = True\n            # safe_state_pub.publish(safe_state_msg)\n\n\ndef main(args=None):\n    rclpy.init(args=args)\n    heartbeat_monitor = HeartbeatMonitor()\n    rclpy.spin(heartbeat_monitor)\n    rclpy.shutdown()\n\nif __name__ == '__main__':\n    main()"
+  },
+  "deployment_spec": {
+    "apptainer_def": "Bootstrap: docker\nFrom: ubuntu:24.04\n\n%post\n    apt-get update\n    apt-get install -y ros-humble-desktop python3-pip python3-colcon-common-extensions\n    pip3 install numpy\n    # Install other necessary packages\n\n%environment\n    ROS_DOMAIN_ID=33\n    . /opt/ros/humble/setup.sh\n\n%runscript\n    ros2 launch my_package robot_launch.py"
+  },
+  "physics_validation": {
+    "required_torque_nm": 9.81,
+    "mass_kg": 2,
+    "depth_rating_m_or_lift_n": 100,
+    "safety_factor": 2
+  }
+}
